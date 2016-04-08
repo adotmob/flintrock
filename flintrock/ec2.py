@@ -239,18 +239,30 @@ class EC2Cluster(FlintrockCluster):
             remote_path=remote_path)
 
     def update_hosts(self, user: str, identity_file: str):
+        commands="""
+            set -e
+            """
         for instance in self.instances:
-            for item in self.instances:
-                ssh_check_output(
-                    client=get_ssh_client(user=user, host=(instance.private_ip_address if self.use_private_network else instance.public_ip_address), identity_file=identity_file, wait=True, print_status=True),
-                    command="""
-                        set -e
-                        sudo /bin/bash -c 'echo "{ip}     {private_dns_name} {public_dns_name} {local_hostname}" >>/etc/hosts'
-                        """.format(
-                            ip=shlex.quote(item.private_ip_address if self.use_private_network else item.public_ip_address),
-                            private_dns_name=shlex.quote(item.private_dns_name),
-                            public_dns_name=shlex.quote(item.public_dns_name),
-                            local_hostname=shlex.quote("$(hostname)" if item.private_ip_address == instance.private_ip_address else "")))
+            commands+="""
+                sudo /bin/bash -c 'echo "{ip}     {private_dns_name} {public_dns_name}" >>/etc/hosts'
+                """.format(
+                    ip=shlex.quote(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
+                    private_dns_name=shlex.quote(instance.private_dns_name),
+                    public_dns_name=shlex.quote(instance.public_dns_name))
+        for instance in self.instances:
+            instance_command=commands+"""
+                sudo /bin/bash -c 'echo "{ip}     {local_hostname}" >>/etc/hosts'
+                """.format(
+                        ip=shlex.quote(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
+                        local_hostname=shlex.quote("$(hostname)"))
+            ssh_check_output(
+                client=get_ssh_client(
+                    user=user, 
+                    host=(instance.private_ip_address if self.use_private_network else instance.public_ip_address), 
+                    identity_file=identity_file, 
+                    wait=True, 
+                    print_status=False),
+                command=instance_command)
 
     def print(self):
         """
