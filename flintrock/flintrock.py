@@ -557,7 +557,7 @@ def start(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, 
 @click.option('--assume-yes/--no-assume-yes', default=False)
 @click.option('--ec2-use-private-network/--no-use-private-network', help="defaults to False; if set to True, access-origins is required", default=False)
 @click.pass_context
-def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes):
+def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes, ec2_use_private_network):
     """
     Stop an existing, running cluster.
     """
