@@ -277,7 +277,7 @@ def launch(
     option_requires(
         option='--ec2-use-private-network',
         conditional_value=True,
-        requires_all=['--ec2-access-origins']
+        requires_all=['--ec2-access-origins'],
         scope=locals())
     # The subnet is required for non-default VPCs because EC2 does not
     # support user-defined default subnets.
