@@ -745,7 +745,7 @@ def get_clusters(*, cluster_names: list=[], region: str, vpc_id: str, use_privat
             region=region,
             vpc_id=vpc_id,
             instances=list(filter(
-                lambda x: _get_cluster_name(x) == cluster_name, all_clusters_instances))
+                lambda x: _get_cluster_name(x) == cluster_name, all_clusters_instances)),
             use_private_network=use_private_network)
         for cluster_name in found_cluster_names]
 
