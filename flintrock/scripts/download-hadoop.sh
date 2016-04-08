@@ -33,3 +33,9 @@ done
 set -e
 
 gzip -t "$file"
+
+mkdir "hadoop"
+mkdir "hadoop/conf"
+
+tar xzf "${file}" -C "hadoop" --strip-components=1
+rm "${file}"

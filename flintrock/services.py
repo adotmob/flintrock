@@ -151,12 +151,6 @@ class HDFS(FlintrockService):
                     set -e
 
                     /tmp/download-hadoop.sh "{version}" {download_source}
-
-                    mkdir "hadoop"
-                    mkdir "hadoop/conf"
-
-                    tar xzf "hadoop-{version}.tar.gz" -C "hadoop" --strip-components=1
-                    rm "hadoop-{version}.tar.gz"
                 """.format(version=self.version, download_source=shlex.quote(self.download_source)))
 
     def configure(
