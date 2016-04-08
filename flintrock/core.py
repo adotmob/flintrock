@@ -400,7 +400,7 @@ def provision_cluster(
 
     master_ssh_client = get_ssh_client(
         user=user,
-        host=cluster.master_host,
+        host=cluster.master_ip,
         identity_file=identity_file)
 
     with master_ssh_client:
@@ -428,7 +428,7 @@ def provision_cluster(
         time.sleep(30)
 
     for service in services:
-        service.health_check(master_host=cluster.master_host)
+        service.health_check(master_host=cluster.master_ip)
 
 
 def provision_node(

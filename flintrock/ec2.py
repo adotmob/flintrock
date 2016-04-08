@@ -2,6 +2,7 @@ import functools
 import string
 import sys
 import time
+import shlex
 import urllib.request
 from collections import namedtuple
 from datetime import datetime
@@ -20,7 +21,7 @@ from .exceptions import (
     ClusterAlreadyExists,
     ClusterInvalidState,
     NothingToDo)
-from .ssh import generate_ssh_key_pair
+from .ssh import generate_ssh_key_pair, get_ssh_client, ssh_check_output
 
 
 class NoDefaultVPC(Error):
@@ -237,6 +238,20 @@ class EC2Cluster(FlintrockCluster):
             local_path=local_path,
             remote_path=remote_path)
 
+    def update_hosts(self, user: str, identity_file: str):
+        for instance in self.instances:
+            for item in self.instances:
+                ssh_check_output(
+                    client=get_ssh_client(user=user, host=(instance.private_ip_address if self.use_private_network else instance.public_ip_address), identity_file=identity_file, wait=True, print_status=True),
+                    command="""
+                        set -e
+                        sudo /bin/bash -c 'echo "{ip}     {private_dns_name} {public_dns_name} {local_hostname}" >>/etc/hosts'
+                        """.format(
+                            ip=shlex.quote(item.private_ip_address if self.use_private_network else item.public_ip_address),
+                            private_dns_name=shlex.quote(item.private_dns_name),
+                            public_dns_name=shlex.quote(item.public_dns_name),
+                            local_hostname=shlex.quote("$(hostname)" if item.private_ip_address == instance.private_ip_address else "")))
+
     def print(self):
         """
         Print information about the cluster to screen in YAML.
@@ -281,6 +296,7 @@ def check_network_config(*, region_name: str, vpc_id: str, subnet_id: str):
     """
     ec2 = boto3.resource(service_name='ec2', region_name=region_name)
 
+    """
     if not ec2.Vpc(vpc_id).describe_attribute(Attribute='enableDnsHostnames')['EnableDnsHostnames']['Value']:
         raise ConfigurationNotSupported(
             "{v} does not have DNS hostnames enabled. "
@@ -288,6 +304,7 @@ def check_network_config(*, region_name: str, vpc_id: str, subnet_id: str):
             "See: https://github.com/nchammas/flintrock/issues/43"
             .format(v=vpc_id)
         )
+    """
     if not ec2.Subnet(subnet_id).map_public_ip_on_launch:
         raise ConfigurationNotSupported(
             "{s} does not auto-assign public IP addresses. "
@@ -649,6 +666,8 @@ def launch(
             use_private_network=use_private_network)
 
         cluster.wait_for_state('running')
+
+        cluster.update_hosts(user=user, identity_file=identity_file)
 
         provision_cluster(
             cluster=cluster,
