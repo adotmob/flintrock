@@ -693,7 +693,7 @@ def launch(
         raise
 
 
-def get_cluster(*, cluster_name: str, region: str, vpc_id: str, use_private_network:bool) -> EC2Cluster:
+def get_cluster(*, cluster_name: str, region: str, vpc_id: str, use_private_network: bool) -> EC2Cluster:
     """
     Get an existing EC2 cluster.
     """
