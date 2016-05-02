@@ -659,14 +659,16 @@ def launch(
             .filter(InstanceIds=[master_instance.id])
             .create_tags(
                 Tags=[
+                    {'Key': 'ENV', 'Value': 'DATA'},
                     {'Key': 'flintrock-role', 'Value': 'master'},
-                    {'Key': 'Name', 'Value': '{c}-master'.format(c=cluster_name)}]))
+                    {'Key': 'Name', 'Value': '{c}'.format(c=cluster_name)}]))
         (ec2.instances
             .filter(InstanceIds=[i.id for i in slave_instances])
             .create_tags(
                 Tags=[
+                    {'Key': 'ENV', 'Value': 'DATA'},
                     {'Key': 'flintrock-role', 'Value': 'slave'},
-                    {'Key': 'Name', 'Value': '{c}-slave'.format(c=cluster_name)}]))
+                    {'Key': 'Name', 'Value': '{c}'.format(c=cluster_name)}]))
 
         cluster = EC2Cluster(
             name=cluster_name,
