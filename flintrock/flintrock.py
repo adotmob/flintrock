@@ -457,13 +457,13 @@ def describe(
     if cluster_name:
         cluster = clusters[0]
         if master_hostname_only:
-            print(cluster.master_host)
+            print(cluster.master_ip if ec2_use_private_network else cluster.master_host)
         else:
             cluster.print()
     else:
         if master_hostname_only:
             for cluster in sorted(clusters, key=lambda x: x.name):
-                print(cluster.name + ':', cluster.master_host)
+                print(cluster.name + ':', cluster.master_ip if ec2_use_private_network else cluster.master_host)
         else:
             print("Found {n} cluster{s}{space}{search_area}.".format(
                 n=len(clusters),
