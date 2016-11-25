@@ -26,7 +26,8 @@ providers:
     instance-type: m5.large
     region: us-east-1
     # availability-zone: <name>
-    ami: ami-00b882ac5193044e4  # Amazon Linux 2, us-east-1
+    # ami: ami-9398d3e0 # eu-west-1 - Amazon Linux AMI 2016.09 : HVM (SSD) Save on 64 bit EBS
+    ami: ami-3bfab942 # eu-west-1 Amazon Linux AMI 2017.09.1.20180307 x86_64 HVM GP2
     user: ec2-user
     # ami: ami-61bbf104  # CentOS 7, us-east-1
     # user: centos
@@ -46,6 +47,8 @@ providers:
     # min-root-ebs-size-gb: <size-gb>
     tenancy: default  # default | dedicated
     ebs-optimized: no  # yes | no
+    # use-private-network: # optional; defaults to False; if set to True, access-origins is required
+    # access-origins: # optional; must be written within quote; default to your public ip address
     instance-initiated-shutdown-behavior: terminate  # terminate | stop
     # user-data: /path/to/userdata/script
 
