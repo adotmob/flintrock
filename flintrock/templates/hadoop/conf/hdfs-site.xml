@@ -11,4 +11,27 @@
     <name>dfs.datanode.data.dir</name>
     <value>{root_ephemeral_dirs}</value>
   </property>
+
+  <!-- With the following value, a datanote will be dead after ~2 minutes.
+  This is useful when using flintrock remove-slaves
+
+	See https://community.hortonworks.com/questions/2474/how-to-identify-stale-datanode.html for more info
+	-->
+  <property>
+    <name>dfs.namenode.heartbeat.recheck-interval</name>
+    <value>60000</value><!-- 1 minute. Default value is 5 minutes -->
+  </property>
+
+  <!-- give lowest priority for reads when a datanode is stale -->
+  <property>
+    <name>dfs.namenode.avoid.read.stale.datanode</name>
+    <value>true</value>
+  </property>
+
+  <!-- give lowest priority for writes when a datanode is stale -->
+  <property>
+    <name>dfs.namenode.avoid.write.stale.datanode</name>
+    <value>true</value>
+  </property>
+
 </configuration>
