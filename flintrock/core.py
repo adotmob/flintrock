@@ -177,6 +177,17 @@ class FlintrockCluster:
             persistent=None)
         self.storage_dirs = storage_dirs
 
+
+    def subnet_is_private(self) -> bool:
+        """
+        A boolean set to true if the subnet is private..
+
+        Providers must override this property since it is typically derived from
+        an underlying object, like an EC2 instance.
+        """
+        raise NotImplementedError
+
+
     def destroy_check(self):
         """
         Check that the cluster is in a state in which it can be destroyed.
@@ -619,7 +630,7 @@ def provision_cluster(
 
     master_ssh_client = get_ssh_client(
         user=user,
-        host=cluster.master_host,
+        host=cluster.master_ip,
         identity_file=identity_file)
 
     with master_ssh_client:
@@ -644,7 +655,7 @@ def provision_cluster(
                 cluster=cluster)
 
     for service in services:
-        service.health_check(master_host=cluster.master_host)
+        service.health_check(master_host=cluster.master_ip)
 
 
 def provision_node(
