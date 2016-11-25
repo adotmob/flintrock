@@ -273,6 +273,12 @@ def cli(cli_context, config, provider, debug):
               multiple=True,
               help="Additional tags (e.g. 'Key,Value') to assign to the instances. "
                    "You can specify this option multiple times.")
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
+@click.option('--ec2-access-origins',
+              help="Comma separated CIDR adresses as point of origin to access the spark cluster. "
+                   "This parameter must be set within quote.")
 @click.pass_context
 def launch(
         cli_context,
@@ -306,7 +312,9 @@ def launch(
         ec2_ebs_optimized,
         ec2_instance_initiated_shutdown_behavior,
         ec2_user_data,
-        ec2_tags):
+        ec2_tags,
+        ec2_use_private_network,
+        ec2_access_origins):
     """
     Launch a new cluster.
     """
@@ -338,6 +346,11 @@ def launch(
             '--ec2-region',
             '--ec2-ami',
             '--ec2-user'],
+        scope=locals())
+    option_requires(
+        option='--ec2-use-private-network',
+        conditional_value=True,
+        requires_all=['--ec2-access-origins'],
         scope=locals())
     # The subnet is required for non-default VPCs because EC2 does not
     # support user-defined default subnets.
@@ -400,11 +413,13 @@ def launch(
             ebs_optimized=ec2_ebs_optimized,
             instance_initiated_shutdown_behavior=ec2_instance_initiated_shutdown_behavior,
             user_data=ec2_user_data,
-            tags=ec2_tags)
+            tags=ec2_tags,
+            use_private_network=ec2_use_private_network,
+            access_origins=ec2_access_origins)
     else:
         raise UnsupportedProviderError(provider)
 
-    print("Cluster master: {}".format(cluster.master_host))
+    print("Cluster master: {}".format(cluster.master_ip if ec2_use_private_network else cluster.master_host))
     print("Login with: flintrock login {}".format(cluster.name))
 
 
@@ -437,8 +452,11 @@ def get_latest_commit(github_repository: str):
 @click.option('--assume-yes/--no-assume-yes', default=False)
 @click.option('--ec2-region', default='us-east-1', show_default=True)
 @click.option('--ec2-vpc-id', default='', help="Leave empty for default VPC.")
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
-def destroy(cli_context, cluster_name, assume_yes, ec2_region, ec2_vpc_id):
+def destroy(cli_context, cluster_name, assume_yes, ec2_region, ec2_vpc_id, ec2_use_private_network):
     """
     Destroy a cluster.
     """
@@ -454,7 +472,8 @@ def destroy(cli_context, cluster_name, assume_yes, ec2_region, ec2_vpc_id):
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
     else:
         raise UnsupportedProviderError(provider)
 
@@ -473,13 +492,17 @@ def destroy(cli_context, cluster_name, assume_yes, ec2_region, ec2_vpc_id):
 @click.option('--master-hostname-only', is_flag=True, default=False)
 @click.option('--ec2-region', default='us-east-1', show_default=True)
 @click.option('--ec2-vpc-id', default='', help="Leave empty for default VPC.")
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
 def describe(
         cli_context,
         cluster_name,
         master_hostname_only,
         ec2_region,
-        ec2_vpc_id):
+        ec2_vpc_id,
+        ec2_use_private_network):
     """
     Describe an existing cluster.
 
@@ -507,20 +530,21 @@ def describe(
         clusters = ec2.get_clusters(
             cluster_names=cluster_names,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
     else:
         raise UnsupportedProviderError(provider)
 
     if cluster_name:
         cluster = clusters[0]
         if master_hostname_only:
-            logger.info(cluster.master_host)
+            logger.info(cluster.master_ip if ec2_use_private_network else cluster.master_host)
         else:
             cluster.print()
     else:
         if master_hostname_only:
             for cluster in sorted(clusters, key=lambda x: x.name):
-                logger.info(cluster.name + ':', cluster.master_host)
+                logger.info(cluster.name + ':', cluster.master_ip if ec2_use_private_network else cluster.master_host)
         else:
             logger.info("Found {n} cluster{s}{space}{search_area}.".format(
                 n=len(clusters),
@@ -543,8 +567,11 @@ def describe(
               type=click.Path(exists=True, dir_okay=False),
               help="Path to SSH .pem file for accessing nodes.")
 @click.option('--ec2-user')
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
-def login(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, ec2_user):
+def login(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, ec2_user, ec2_use_private_network):
     """
     Login to the master of an existing cluster.
     """
@@ -565,7 +592,8 @@ def login(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, 
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
         user = ec2_user
         identity_file = ec2_identity_file
     else:
@@ -585,8 +613,11 @@ def login(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, 
               type=click.Path(exists=True, dir_okay=False),
               help="Path to SSH .pem file for accessing nodes.")
 @click.option('--ec2-user')
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
-def start(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, ec2_user):
+def start(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, ec2_user, ec2_use_private_network):
     """
     Start an existing, stopped cluster.
     """
@@ -605,7 +636,8 @@ def start(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, 
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
         user = ec2_user
         identity_file = ec2_identity_file
     else:
@@ -621,8 +653,11 @@ def start(cli_context, cluster_name, ec2_region, ec2_vpc_id, ec2_identity_file, 
 @click.option('--ec2-region', default='us-east-1', show_default=True)
 @click.option('--ec2-vpc-id', default='', help="Leave empty for default VPC.")
 @click.option('--assume-yes/--no-assume-yes', default=False)
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
-def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes):
+def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes, ec2_use_private_network):
     """
     Stop an existing, running cluster.
     """
@@ -638,7 +673,8 @@ def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes):
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
     else:
         raise UnsupportedProviderError(provider)
 
@@ -672,6 +708,9 @@ def stop(cli_context, cluster_name, ec2_region, ec2_vpc_id, assume_yes):
               multiple=True,
               help="Additional tags (e.g. 'Key,Value') to assign to the instances. "
                    "You can specify this option multiple times.")
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
 def add_slaves(
         cli_context,
@@ -684,7 +723,8 @@ def add_slaves(
         ec2_spot_price,
         ec2_min_root_ebs_size_gb,
         ec2_tags,
-        assume_yes):
+        assume_yes,
+        ec2_use_private_network):
     """
     Add slaves to an existing cluster.
 
@@ -706,7 +746,8 @@ def add_slaves(
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
         user = ec2_user
         identity_file = ec2_identity_file
         provider_options = {
@@ -748,6 +789,9 @@ def add_slaves(
               type=click.Path(exists=True, dir_okay=False),
               help="Path to SSH .pem file for accessing nodes.")
 @click.option('--assume-yes/--no-assume-yes', default=False)
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
 def remove_slaves(
         cli_context,
@@ -757,7 +801,8 @@ def remove_slaves(
         ec2_vpc_id,
         ec2_user,
         ec2_identity_file,
-        assume_yes):
+        assume_yes,
+        ec2_use_private_network):
     """
     Remove slaves from an existing cluster.
     """
@@ -776,7 +821,8 @@ def remove_slaves(
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
         user = ec2_user
         identity_file = ec2_identity_file
     else:
@@ -822,6 +868,9 @@ def remove_slaves(
               type=click.Path(exists=True, dir_okay=False),
               help="Path to SSH .pem file for accessing nodes.")
 @click.option('--ec2-user')
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
 def run_command(
         cli_context,
@@ -831,7 +880,8 @@ def run_command(
         ec2_region,
         ec2_vpc_id,
         ec2_identity_file,
-        ec2_user):
+        ec2_user,
+        ec2_use_private_network):
     """
     Run a shell command on a cluster.
 
@@ -858,7 +908,8 @@ def run_command(
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
         user = ec2_user
         identity_file = ec2_identity_file
     else:
@@ -888,6 +939,9 @@ def run_command(
               help="Path to SSH .pem file for accessing nodes.")
 @click.option('--ec2-user')
 @click.option('--assume-yes/--no-assume-yes', default=False, help="Prompt before large uploads.")
+@click.option('--ec2-use-private-network/--no-use-private-network',
+              help="defaults to False; if set to True, access-origins is required",
+              default=False)
 @click.pass_context
 def copy_file(
         cli_context,
@@ -899,6 +953,7 @@ def copy_file(
         ec2_vpc_id,
         ec2_identity_file,
         ec2_user,
+        ec2_use_private_network,
         assume_yes):
     """
     Copy a local file up to a cluster.
@@ -932,7 +987,8 @@ def copy_file(
         cluster = ec2.get_cluster(
             cluster_name=cluster_name,
             region=ec2_region,
-            vpc_id=ec2_vpc_id)
+            vpc_id=ec2_vpc_id,
+            use_private_network=ec2_use_private_network)
         user = ec2_user
         identity_file = ec2_identity_file
     else:
