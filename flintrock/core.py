@@ -174,6 +174,17 @@ class FlintrockCluster:
             persistent=None)
         self.storage_dirs = storage_dirs
 
+
+    def subnet_is_private(self) -> bool:
+        """
+        A boolean set to true if the subnet is private..
+
+        Providers must override this property since it is typically derived from
+        an underlying object, like an EC2 instance.
+        """
+        raise NotImplementedError
+
+
     def destroy_check(self):
         """
         Check that the cluster is in a state in which it can be destroyed.
@@ -585,6 +596,19 @@ def setup_node(
     cluster.storage_dirs.root = storage_dirs['root']
     cluster.storage_dirs.ephemeral = storage_dirs['ephemeral']
 
+    if cluster.subnet_is_private:
+        print("[{h}] Configuring hostname...".format(h=host))
+        # TODO: handle hostname for other regions than eu-west-1
+        ssh_check_output(
+            client=client,
+            command="""
+                set -e
+
+                fullname=`hostname`.eu-west-1.compute.internal
+
+                echo "{h} $fullname $(hostname)" |sudo tee -a /etc/hosts
+                """.format(h=host))
+
     ensure_java8(ssh_client)
 
     for service in services:
@@ -618,7 +642,7 @@ def provision_cluster(
 
     master_ssh_client = get_ssh_client(
         user=user,
-        host=cluster.master_host,
+        host=cluster.master_ip,
         identity_file=identity_file)
 
     with master_ssh_client:
@@ -649,7 +673,7 @@ def provision_cluster(
         time.sleep(20)
 
     for service in services:
-        service.health_check(master_host=cluster.master_host)
+        service.health_check(master_host=cluster.master_ip)
 
 
 def provision_node(

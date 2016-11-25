@@ -2,6 +2,7 @@ import functools
 import string
 import sys
 import time
+import shlex
 import urllib.request
 import base64
 import os
@@ -22,7 +23,7 @@ from .exceptions import (
     ClusterAlreadyExists,
     ClusterInvalidState,
     NothingToDo)
-from .ssh import generate_ssh_key_pair
+from .ssh import generate_ssh_key_pair, get_ssh_client, ssh_check_output
 
 
 class NoDefaultVPC(Error):
@@ -59,6 +60,7 @@ class EC2Cluster(FlintrockCluster):
             vpc_id: str,
             master_instance: 'boto3.resources.factory.ec2.Instance',
             slave_instances: "List[boto3.resources.factory.ec2.Instance]",
+            use_private_network: bool,
             *args,
             **kwargs):
         super().__init__(*args, **kwargs)
@@ -66,6 +68,7 @@ class EC2Cluster(FlintrockCluster):
         self.vpc_id = vpc_id
         self.master_instance = master_instance
         self.slave_instances = slave_instances
+        self.use_private_network = use_private_network
 
     @property
     def instances(self):
@@ -76,19 +79,36 @@ class EC2Cluster(FlintrockCluster):
 
     @property
     def master_ip(self):
-        return self.master_instance.public_ip_address
+        if self.use_private_network:
+            return self.master_instance.private_ip_address
+        else:
+            return self.master_instance.public_ip_address
 
     @property
     def master_host(self):
-        return self.master_instance.public_dns_name
+        if self.use_private_network:
+            return self.master_instance.private_dns_name
+        else:
+            return self.master_instance.public_dns_name
 
     @property
     def slave_ips(self):
-        return [i.public_ip_address for i in self.slave_instances]
+        if self.use_private_network:
+            return [i.private_ip_address for i in self.slave_instances]
+        else:
+            return [i.public_ip_address for i in self.slave_instances]
 
     @property
     def slave_hosts(self):
-        return [i.public_dns_name for i in self.slave_instances]
+        if self.use_private_network:
+            return [i.private_dns_name for i in self.slave_instances]
+        else:
+            return [i.public_dns_name for i in self.slave_instances]
+
+    @property
+    def subnet_is_private(self):
+        ec2 = boto3.resource(service_name='ec2', region_name=self.region)
+        return not ec2.Subnet(self.master_instance.subnet_id).map_public_ip_on_launch
 
     @property
     def num_masters(self):
@@ -291,15 +311,18 @@ class EC2Cluster(FlintrockCluster):
                 ])
             .create_tags(
                 Tags=[
+                    {'Key': 'ENV', 'Value': 'DATA'},
                     {'Key': 'flintrock-role', 'Value': 'slave'},
                     {'Key': 'Name', 'Value': '{c}-slave'.format(c=self.name)}]))
 
-        existing_slaves = {i.public_ip_address for i in self.slave_instances}
+        existing_slaves = {i.private_ip_address if self.use_private_network else i.public_ip_address for i in self.slave_instances}
 
         self.slave_instances += new_slave_instances
         self.wait_for_state('running')
 
-        new_slaves = {i.public_ip_address for i in self.slave_instances} - existing_slaves
+        self.update_hosts(user=user, identity_file=identity_file)
+
+        new_slaves = {i.private_ip_address if self.use_private_network else i.public_ip_address for i in self.slave_instances} - existing_slaves
 
         super().add_slaves(
             user=user,
@@ -343,6 +366,8 @@ class EC2Cluster(FlintrockCluster):
                 ])
             .terminate())
 
+        self.update_hosts(user=user, identity_file=identity_file)
+
     def run_command_check(self):
         if self.state != 'running':
             raise ClusterInvalidState(
@@ -374,6 +399,33 @@ class EC2Cluster(FlintrockCluster):
             local_path=local_path,
             remote_path=remote_path)
 
+    def update_hosts(self, user: str, identity_file: str):
+        commands="""
+            set -e
+            sudo /bin/bash -c 'echo "#" >/etc/hosts'
+            """
+        for instance in self.instances:
+            commands+="""
+                sudo /bin/bash -c 'echo "{ip}     {private_dns_name} {public_dns_name}" >>/etc/hosts'
+                """.format(
+                    ip=shlex.quote(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
+                    private_dns_name=shlex.quote(instance.private_dns_name),
+                    public_dns_name=shlex.quote(instance.public_dns_name))
+        for instance in self.instances:
+            instance_command=commands+"""
+                sudo /bin/bash -c 'echo "{ip}     {local_hostname}" >>/etc/hosts'
+                """.format(
+                        ip=shlex.quote(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
+                        local_hostname=shlex.quote("$(hostname)"))
+            ssh_check_output(
+                client=get_ssh_client(
+                    user=user,
+                    host=(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
+                    identity_file=identity_file,
+                    wait=True,
+                    print_status=False),
+                command=instance_command)
+
     def print(self):
         """
         Print information about the cluster to screen in YAML.
@@ -388,10 +440,10 @@ class EC2Cluster(FlintrockCluster):
         print('  state: {s}'.format(s=self.state))
         print('  node-count: {nc}'.format(nc=len(self.instances)))
         if self.state == 'running':
-            print('  master:', self.master_host if self.num_masters > 0 else '')
+            print('  master:', (self.master_ip if self.use_private_network else self.master_host) if self.num_masters > 0 else '')
             print(
                 '\n    - '.join(
-                    ['  slaves:'] + (self.slave_hosts if self.num_slaves > 0 else [])))
+                    ['  slaves:'] + ((self.slave_ips if self.use_private_network else self.slave_hosts) if self.num_slaves > 0 else [])))
         # print('...')
 
 
@@ -420,6 +472,7 @@ def check_network_config(*, region_name: str, vpc_id: str, subnet_id: str):
     """
     ec2 = boto3.resource(service_name='ec2', region_name=region_name)
 
+    """
     if not ec2.Vpc(vpc_id).describe_attribute(Attribute='enableDnsHostnames')['EnableDnsHostnames']['Value']:
         raise ConfigurationNotSupported(
             "{v} does not have DNS hostnames enabled. "
@@ -434,6 +487,7 @@ def check_network_config(*, region_name: str, vpc_id: str, subnet_id: str):
             "See: https://github.com/nchammas/flintrock/issues/14"
             .format(s=subnet_id)
         )
+    """
 
 
 def get_security_groups(
@@ -466,7 +520,8 @@ def get_or_create_flintrock_security_groups(
         *,
         cluster_name,
         vpc_id,
-        region) -> "List[boto3.resource('ec2').SecurityGroup]":
+        region,
+        access_origins) -> "List[boto3.resource('ec2').SecurityGroup]":
     """
     If they do not already exist, create all the security groups needed for a
     Flintrock cluster.
@@ -513,54 +568,63 @@ def get_or_create_flintrock_security_groups(
             VpcId=vpc_id)
 
     # Rules for the client interacting with the cluster.
-    flintrock_client_ip = (
-        urllib.request.urlopen('http://checkip.amazonaws.com/')
-        .read().decode('utf-8').strip())
-    flintrock_client_cidr = '{ip}/32'.format(ip=flintrock_client_ip)
+    flintrock_clients_cidr = []
+    if not access_origins:
+        flintrock_client_ip = (
+            urllib.request.urlopen('http://checkip.amazonaws.com/')
+            .read().decode('utf-8').strip())
+        flintrock_clients_cidr.append('{ip}/32'.format(ip=flintrock_client_ip))
+    else:
+        for item in access_origins.split(','):
+            flintrock_clients_cidr.append(item)
 
     # TODO: Services should be responsible for registering what ports they want exposed.
-    client_rules = [
-        # SSH
-        SecurityGroupRule(
-            ip_protocol='tcp',
-            from_port=22,
-            to_port=22,
-            cidr_ip=flintrock_client_cidr,
-            src_group=None),
-        # HDFS
-        SecurityGroupRule(
-            ip_protocol='tcp',
-            from_port=50070,
-            to_port=50070,
-            cidr_ip=flintrock_client_cidr,
-            src_group=None),
-        # Spark
-        SecurityGroupRule(
-            ip_protocol='tcp',
-            from_port=8080,
-            to_port=8081,
-            cidr_ip=flintrock_client_cidr,
-            src_group=None),
-        SecurityGroupRule(
-            ip_protocol='tcp',
-            from_port=4040,
-            to_port=4050,
-            cidr_ip=flintrock_client_cidr,
-            src_group=None),
-        SecurityGroupRule(
-            ip_protocol='tcp',
-            from_port=7077,
-            to_port=7077,
-            cidr_ip=flintrock_client_cidr,
-            src_group=None),
-        # Spark REST Server
-        SecurityGroupRule(
-            ip_protocol='tcp',
-            from_port=6066,
-            to_port=6066,
-            cidr_ip=flintrock_client_cidr,
-            src_group=None)
-    ]
+    client_rules = []
+    for flintrock_client_cidr in flintrock_clients_cidr:
+        rules = [
+            # SSH
+            SecurityGroupRule(
+                ip_protocol='tcp',
+                from_port=22,
+                to_port=22,
+                cidr_ip=flintrock_client_cidr,
+                src_group=None),
+            # HDFS
+            SecurityGroupRule(
+                ip_protocol='tcp',
+                from_port=50070,
+                to_port=50070,
+                cidr_ip=flintrock_client_cidr,
+                src_group=None),
+            # Spark
+            SecurityGroupRule(
+                ip_protocol='tcp',
+                from_port=8080,
+                to_port=8081,
+                cidr_ip=flintrock_client_cidr,
+                src_group=None),
+            SecurityGroupRule(
+                ip_protocol='tcp',
+                from_port=4040,
+                to_port=4050,
+                cidr_ip=flintrock_client_cidr,
+                src_group=None),
+            SecurityGroupRule(
+                ip_protocol='tcp',
+                from_port=7077,
+                to_port=7077,
+                cidr_ip=flintrock_client_cidr,
+                src_group=None),
+            # Spark REST Server
+            SecurityGroupRule(
+                ip_protocol='tcp',
+                from_port=6066,
+                to_port=6066,
+                cidr_ip=flintrock_client_cidr,
+                src_group=None)
+        ]
+
+        client_rules.extend(rules)
 
     # TODO: Don't try adding rules that already exist.
     # TODO: Add rules in one shot.
@@ -661,12 +725,12 @@ def _create_instances(
         block_device_mappings,
         availability_zone,
         placement_group,
-        tenancy,
         security_group_ids,
         subnet_id,
         instance_profile_arn,
-        ebs_optimized,
-        instance_initiated_shutdown_behavior,
+        tenancy='default',
+        ebs_optimized=False,
+        instance_initiated_shutdown_behavior='stop',
         user_data) -> 'List[boto3.resources.factory.ec2.Instance]':
     ec2 = boto3.resource(service_name='ec2', region_name=region)
 
@@ -690,10 +754,16 @@ def _create_instances(
                     'Placement': {
                         'AvailabilityZone': availability_zone,
                         'GroupName': placement_group},
-                    'SecurityGroupIds': security_group_ids,
-                    'SubnetId': subnet_id,
                     'IamInstanceProfile': {
                         'Arn': instance_profile_arn},
+                    'NetworkInterfaces': [
+                        {
+                            'DeviceIndex': 0,
+                            'AssociatePublicIpAddress': True,
+                            'SubnetId': subnet_id,
+                            'Groups': security_group_ids
+                        }
+                    ],
                     'EbsOptimized': ebs_optimized,
                     'UserData': user_data})['SpotInstanceRequests']
 
@@ -821,6 +891,8 @@ def launch(
         tenancy='default',
         ebs_optimized=False,
         instance_initiated_shutdown_behavior='stop',
+        use_private_network=False,
+        access_origins='',
         user_data):
     """
     Launch a cluster.
@@ -839,7 +911,8 @@ def launch(
         get_cluster(
             cluster_name=cluster_name,
             region=region,
-            vpc_id=vpc_id)
+            vpc_id=vpc_id,
+            use_private_network=use_private_network)
     except ClusterNotFound as e:
         pass
     else:
@@ -852,7 +925,8 @@ def launch(
     flintrock_security_groups = get_or_create_flintrock_security_groups(
         cluster_name=cluster_name,
         vpc_id=vpc_id,
-        region=region)
+        region=region,
+        access_origins=access_origins)
     user_security_groups = get_security_groups(
         vpc_id=vpc_id,
         region=region,
@@ -908,6 +982,7 @@ def launch(
             ])
         .create_tags(
             Tags=[
+                {'Key': 'ENV', 'Value': 'DATA'},
                 {'Key': 'flintrock-role', 'Value': 'master'},
                 {'Key': 'Name', 'Value': '{c}-master'.format(c=cluster_name)}]))
     (ec2.instances
@@ -917,6 +992,7 @@ def launch(
             ])
         .create_tags(
             Tags=[
+                {'Key': 'ENV', 'Value': 'DATA'},
                 {'Key': 'flintrock-role', 'Value': 'slave'},
                 {'Key': 'Name', 'Value': '{c}-slave'.format(c=cluster_name)}]))
 
@@ -926,9 +1002,12 @@ def launch(
         vpc_id=vpc_id,
         ssh_key_pair=generate_ssh_key_pair(),
         master_instance=master_instance,
-        slave_instances=slave_instances)
+        slave_instances=slave_instances,
+        use_private_network=use_private_network)
 
     cluster.wait_for_state('running')
+
+    cluster.update_hosts(user=user, identity_file=identity_file)
 
     provision_cluster(
         cluster=cluster,
@@ -937,18 +1016,24 @@ def launch(
         identity_file=identity_file)
 
 
-def get_cluster(*, cluster_name: str, region: str, vpc_id: str) -> EC2Cluster:
+def get_cluster(*, cluster_name: str,
+    region: str,
+    vpc_id: str,
+    use_private_network: bool) -> EC2Cluster:
+
     """
     Get an existing EC2 cluster.
     """
     cluster = get_clusters(
         cluster_names=[cluster_name],
         region=region,
-        vpc_id=vpc_id)
+        vpc_id=vpc_id,
+        use_private_network=use_private_network)
+
     return cluster[0]
 
 
-def get_clusters(*, cluster_names: list=[], region: str, vpc_id: str) -> list:
+def get_clusters(*, cluster_names: list=[], region: str, vpc_id: str, use_private_network: bool) -> list:
     """
     Get all the named clusters. If no names are given, get all clusters.
 
@@ -988,7 +1073,8 @@ def get_clusters(*, cluster_names: list=[], region: str, vpc_id: str) -> list:
             region=region,
             vpc_id=vpc_id,
             instances=list(filter(
-                lambda x: _get_cluster_name(x) == cluster_name, all_clusters_instances)))
+                lambda x: _get_cluster_name(x) == cluster_name, all_clusters_instances)),
+            use_private_network=use_private_network)
         for cluster_name in found_cluster_names]
 
     return clusters
@@ -1035,7 +1121,7 @@ def _get_cluster_master_slaves(
     return (master_instance, slave_instances)
 
 
-def _compose_cluster(*, name: str, region: str, vpc_id: str, instances: list) -> EC2Cluster:
+def _compose_cluster(*, name: str, region: str, vpc_id: str, instances: list, use_private_network: bool) -> EC2Cluster:
     """
     Compose an EC2Cluster object from a set of raw EC2 instances representing
     a Flintrock cluster.
@@ -1047,6 +1133,7 @@ def _compose_cluster(*, name: str, region: str, vpc_id: str, instances: list) ->
         region=region,
         vpc_id=vpc_id,
         master_instance=master_instance,
-        slave_instances=slave_instances)
+        slave_instances=slave_instances,
+        use_private_network=use_private_network)
 
     return cluster

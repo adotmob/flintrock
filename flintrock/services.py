@@ -148,6 +148,10 @@ class HDFS(FlintrockService):
             self,
             ssh_client: paramiko.client.SSHClient,
             cluster: FlintrockCluster):
+
+        print("[{h}] Configuring HDFS...".format(
+            h=ssh_client.get_transport().getpeername()[0]))
+
         # TODO: os.walk() through these files.
         template_paths = [
             'hadoop/conf/masters',
