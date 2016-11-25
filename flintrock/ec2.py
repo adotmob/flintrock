@@ -725,12 +725,12 @@ def _create_instances(
         block_device_mappings,
         availability_zone,
         placement_group,
+        tenancy,
         security_group_ids,
         subnet_id,
         instance_profile_arn,
-        tenancy='default',
-        ebs_optimized=False,
-        instance_initiated_shutdown_behavior='stop',
+        ebs_optimized,
+        instance_initiated_shutdown_behavior,
         user_data) -> 'List[boto3.resources.factory.ec2.Instance]':
     ec2 = boto3.resource(service_name='ec2', region_name=region)
 
