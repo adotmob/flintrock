@@ -600,7 +600,7 @@ def setup_node(
         print("[{h}] Configuring hostname...".format(h=host))
         # TODO: handle hostname for other regions than eu-west-1
         ssh_check_output(
-            client=client,
+            client=ssh_client,
             command="""
                 set -e
 
