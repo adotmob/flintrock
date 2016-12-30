@@ -754,16 +754,10 @@ def _create_instances(
                     'Placement': {
                         'AvailabilityZone': availability_zone,
                         'GroupName': placement_group},
+                    'SecurityGroupIds': security_group_ids,
+                    'SubnetId': subnet_id,
                     'IamInstanceProfile': {
                         'Arn': instance_profile_arn},
-                    'NetworkInterfaces': [
-                        {
-                            'DeviceIndex': 0,
-                            'AssociatePublicIpAddress': True,
-                            'SubnetId': subnet_id,
-                            'Groups': security_group_ids
-                        }
-                    ],
                     'EbsOptimized': ebs_optimized,
                     'UserData': user_data})['SpotInstanceRequests']
 
