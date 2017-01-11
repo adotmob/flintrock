@@ -596,19 +596,6 @@ def setup_node(
     cluster.storage_dirs.root = storage_dirs['root']
     cluster.storage_dirs.ephemeral = storage_dirs['ephemeral']
 
-    if cluster.subnet_is_private:
-        print("[{h}] Configuring hostname...".format(h=host))
-        # TODO: handle hostname for other regions than eu-west-1
-        ssh_check_output(
-            client=ssh_client,
-            command="""
-                set -e
-
-                fullname=`hostname`.eu-west-1.compute.internal
-
-                echo "{h} $fullname $(hostname)" |sudo tee -a /etc/hosts
-                """.format(h=host))
-
     ensure_java8(ssh_client)
 
     for service in services:

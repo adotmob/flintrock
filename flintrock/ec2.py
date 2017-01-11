@@ -320,8 +320,6 @@ class EC2Cluster(FlintrockCluster):
         self.slave_instances += new_slave_instances
         self.wait_for_state('running')
 
-        self.update_hosts(user=user, identity_file=identity_file)
-
         new_slaves = {i.private_ip_address if self.use_private_network else i.public_ip_address for i in self.slave_instances} - existing_slaves
 
         super().add_slaves(
@@ -366,8 +364,6 @@ class EC2Cluster(FlintrockCluster):
                 ])
             .terminate())
 
-        self.update_hosts(user=user, identity_file=identity_file)
-
     def run_command_check(self):
         if self.state != 'running':
             raise ClusterInvalidState(
@@ -398,33 +394,6 @@ class EC2Cluster(FlintrockCluster):
             identity_file=identity_file,
             local_path=local_path,
             remote_path=remote_path)
-
-    def update_hosts(self, user: str, identity_file: str):
-        commands="""
-            set -e
-            sudo /bin/bash -c 'echo "#" >/etc/hosts'
-            """
-        for instance in self.instances:
-            commands+="""
-                sudo /bin/bash -c 'echo "{ip}     {private_dns_name} {public_dns_name}" >>/etc/hosts'
-                """.format(
-                    ip=shlex.quote(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
-                    private_dns_name=shlex.quote(instance.private_dns_name),
-                    public_dns_name=shlex.quote(instance.public_dns_name))
-        for instance in self.instances:
-            instance_command=commands+"""
-                sudo /bin/bash -c 'echo "{ip}     {local_hostname}" >>/etc/hosts'
-                """.format(
-                        ip=shlex.quote(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
-                        local_hostname=shlex.quote("$(hostname)"))
-            ssh_check_output(
-                client=get_ssh_client(
-                    user=user,
-                    host=(instance.private_ip_address if self.use_private_network else instance.public_ip_address),
-                    identity_file=identity_file,
-                    wait=True,
-                    print_status=False),
-                command=instance_command)
 
     def print(self):
         """
@@ -1000,8 +969,6 @@ def launch(
         use_private_network=use_private_network)
 
     cluster.wait_for_state('running')
-
-    cluster.update_hosts(user=user, identity_file=identity_file)
 
     provision_cluster(
         cluster=cluster,
