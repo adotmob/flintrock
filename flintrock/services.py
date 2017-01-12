@@ -343,6 +343,7 @@ class Spark(FlintrockService):
             cluster: FlintrockCluster):
 
         template_paths = [
+            'spark/conf/core-site.xml',
             'spark/conf/spark-env.sh',
             'spark/conf/slaves',
             'spark/conf/spark-defaults.conf',
