@@ -478,6 +478,11 @@ def generate_template_mapping(
         'spark_root_ephemeral_dirs': spark_ephemeral_dirs if spark_ephemeral_dirs else spark_root_dir,
     }
 
+    try:
+        template_mapping['region'] = cluster.region
+    except AttributeError:
+        logger.error('Property region is not defined in variable cluster')
+
     return template_mapping
 
 
