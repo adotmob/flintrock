@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+
+<configuration>
+  <property>
+    <name>hadoop.tmp.dir</name>
+    <value>{root_ephemeral_dirs}</value>
+  </property>
+
+  <property>
+    <name>fs.defaultFS</name>
+    <value>hdfs://{master_ip}:9000</value>
+    <description> By default, write to HDFS if no scheme is specified</description>
+  </property>
+
+  <property>
+    <name>fs.s3a.endpoint</name>
+    <value>s3-{ec2_region}.amazonaws.com</value>
+    <final>true</final>
+    <description>AWS S3 endpoint to connect to. An up-to-date list is
+      provided in the AWS Documentation: regions and endpoints. Without this
+      property, the standard region (s3.amazonaws.com) is assumed.
+    </description>
+  </property>
+
+  <property>
+    <name>fs.s3a.impl</name>
+    <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+  </property>
+
+  <property>
+    <name>fs.s3a.access.key</name>
+    <value>{access_key}</value>
+  </property>
+
+  <property>
+    <name>fs.s3a.secret.key</name>
+    <value>{secret_key}</value>
+  </property>
+
+  <property>
+    <name>fs.s3a.buffer.dir</name>
+    <value>/home/ec2-user/spark/work,/tmp</value>
+  </property>
+
+  <property>
+    <name>fs.s3a.fast.upload</name>
+    <value>false</value>
+    <description> NEW in hadoop 2.7 and UNSTABLE.
+    Upload directly from memory instead of buffering to
+    disk first. Memory usage and parallelism can be controlled as up to
+    fs.s3a.multipart.size memory is consumed for each (part)upload actively
+    uploading (fs.s3a.threads.max) or queueing (fs.s3a.max.total.tasks)</description>
+  </property>
+
+  <property>
+    <name>fs.s3a.attempts.maximum</name>
+    <value>50</value>
+    <description>How many times we should retry commands on transient errors.</description>
+  </property>
+
+  <property>
+    <name>fs.s3a.connection.maximum</name>
+    <value>100</value>
+    <description>Controls the maximum number of simultaneous connections to S3.</description>
+  </property>
+</configuration>

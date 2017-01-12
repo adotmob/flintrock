@@ -415,6 +415,16 @@ class EC2Cluster(FlintrockCluster):
                     ['  slaves:'] + ((self.slave_ips if self.use_private_network else self.slave_hosts) if self.num_slaves > 0 else [])))
         # print('...')
 
+    def generate_template_mapping(self, *, service: str) -> dict:
+        template_mapping = super().generate_template_mapping(service=service)
+        template_mapping['ec2_region'] = self.region
+
+        credentials = botocore.session.get_session().get_credentials()
+        template_mapping['access_key'] = credentials.access_key
+        template_mapping['secret_key'] = credentials.secret_key
+
+        return template_mapping
+
 
 def get_default_vpc(region: str) -> 'boto3.resources.factory.ec2.Vpc':
     """
