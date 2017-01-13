@@ -439,8 +439,8 @@ class FlintrockCluster:
         Generate a template mapping from a FlintrockCluster instance that we can use
         to fill in template parameters.
         """
-        root_dir = posixpath.join(self.storage_dirs.root, service)
-        ephemeral_dirs = ','.join(posixpath.join(path, service) for path in self.storage_dirs.ephemeral)
+        root_dir = posixpath.join(self.storage_dirs.root, 'hdfs')
+        ephemeral_dirs = ','.join(posixpath.join(path, 'hdfs') for path in self.storage_dirs.ephemeral)
 
         template_mapping = {
             'master_ip': self.master_ip,
@@ -595,19 +595,6 @@ def setup_node(
 
     cluster.storage_dirs.root = storage_dirs['root']
     cluster.storage_dirs.ephemeral = storage_dirs['ephemeral']
-
-    if cluster.subnet_is_private:
-        print("[{h}] Configuring hostname...".format(h=host))
-        # TODO: handle hostname for other regions than eu-west-1
-        ssh_check_output(
-            client=ssh_client,
-            command="""
-                set -e
-
-                fullname=`hostname`.eu-west-1.compute.internal
-
-                echo "{h} $fullname $(hostname)" |sudo tee -a /etc/hosts
-                """.format(h=host))
 
     ensure_java8(ssh_client)
 

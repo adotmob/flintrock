@@ -292,6 +292,7 @@ class Spark(FlintrockService):
             ssh_client: paramiko.client.SSHClient,
             cluster: FlintrockCluster):
         template_paths = [
+            'spark/conf/core-site.xml',
             'spark/conf/spark-env.sh',
             'spark/conf/slaves']
         for template_path in template_paths:
