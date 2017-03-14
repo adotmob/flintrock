@@ -1,2 +1,2 @@
 # See: https://packaging.python.org/en/latest/distributing/#standards-compliance-for-interoperability
-__version__ = '0.7.5'
+__version__ = '0.7.6'
