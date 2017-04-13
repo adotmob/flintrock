@@ -36,6 +36,7 @@ providers:
     #   - group-name1
     #   - group-name2
     # instance-profile-name:
+    # min-root-ebs-size-gb: <size-gb>
     tenancy: default  # default | dedicated
     ebs-optimized: no  # yes | no
     # use-private-network: # optional; defaults to False; if set to True, access-origins is required
