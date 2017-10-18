@@ -61,7 +61,7 @@
 
   <property>
     <name>fs.s3a.connection.maximum</name>
-    <value>100</value>
+    <value>1000</value>
     <description>Controls the maximum number of simultaneous connections to S3.</description>
   </property>
 
