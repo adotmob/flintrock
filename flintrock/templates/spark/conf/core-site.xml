@@ -64,46 +64,4 @@
     <value>1000</value>
     <description>Controls the maximum number of simultaneous connections to S3.</description>
   </property>
-
-  <!-- Google cloud storage configuration. See https://storage.googleapis.com/hadoop-conf/gcs-core-default.xml -->
-  <property>
-    <name>fs.gs.impl</name>
-    <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem</value>
-  </property>
-
-  <property>
-    <name>fs.AbstractFileSystem.gs.imp</name>
-    <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS</value>
-  </property>
-
-  <!-- NB: the user must change values of properties
-    fs.gs.project.id
-    fs.gs.system.bucket
-    google.cloud.auth.service.account.json.keyfile
-  -->
-  <property>
-    <name>fs.gs.project.id</name>
-    <value>aGoogleCloudProjectId</value>
-  </property>
-
-  <property>
-    <name>fs.gs.system.bucket</name>
-    <value>aBucket</value>
-  </property>
-
-  <property>
-    <name>google.cloud.auth.service.account.json.keyfile</name>
-    <value>/absolutepath/to/creds.json</value>
-  </property>
-
-  <property>
-    <name>google.cloud.auth.service.account.enable</name>
-    <value>true</value>
-  </property>
-
-  <!-- Property used for BigQuery by https://github.com/spotify/spark-bigquery -->
-  <property>
-    <name>bq.staging_dataset.location</name>
-    <value>EU</value>
-  </property>
 </configuration>
