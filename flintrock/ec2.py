@@ -1043,6 +1043,7 @@ def get_clusters(*, cluster_names: list=[], region: str, vpc_id: str, use_privat
     all_clusters_instances = list(
         ec2.instances.filter(
             Filters=[
+                {'Name': 'instance-state-name', 'Values': ['pending', 'running', 'stopping', 'stopped']},
                 {'Name': 'instance.group-name', 'Values': group_name_filter},
                 {'Name': 'vpc-id', 'Values': [vpc_id]},
             ]))
