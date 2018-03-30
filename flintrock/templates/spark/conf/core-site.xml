@@ -28,7 +28,6 @@
     <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
   </property>
 
-  <!-- The following properties are no longer needed because we use roles
   <property>
     <name>fs.s3a.access.key</name>
     <value>{access_key}</value>
@@ -38,7 +37,6 @@
     <name>fs.s3a.secret.key</name>
     <value>{secret_key}</value>
   </property>
-  -->
 
   <property>
     <name>fs.s3a.buffer.dir</name>
