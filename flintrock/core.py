@@ -478,7 +478,16 @@ def generate_template_mapping(
     try:
         template_mapping['region'] = cluster.region
     except AttributeError:
-        logger.error('Property region is not defined in variable cluster')
+        logger.exception('Property region is not defined in variable cluster')
+
+    # TODO: remove the following lines when the migration to IAM roles is finished
+    try:
+        import botocore
+        credentials = botocore.session.get_session().get_credentials()
+        template_mapping['access_key'] = credentials.access_key
+        template_mapping['secret_key'] = credentials.secret_key
+    except:
+        logger.exception('Unable to set credentials')
 
     return template_mapping
 
