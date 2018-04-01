@@ -172,6 +172,17 @@ Flintrock is also available via the following package managers:
 
 These packages are not supported by the core contributors and may be out of date. Please reach out to the relevant communities directly if you have trouble using these distributions to install Flintrock.
 
+### Community-supported distributions
+
+Flintrock may be available in your favorite package manager!
+These packages are not supported by the core contributors and may be out of date.
+Please reach out to these communities directly if you have trouble using them to install flintrock.
+
+These include:
+
+ * [Homebrew](https://brew.sh): `brew install flintrock`
+
+
 ### Development version
 
 If you like living on the edge, install the development version of Flintrock:
