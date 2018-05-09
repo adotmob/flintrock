@@ -24,6 +24,7 @@ if __name__ == '__main__':
             # We won't need this when this issue is resolved:
             # https://github.com/pyinstaller/pyinstaller/issues/1844
             '--hidden-import', 'html.parser',
+            '--hidden-import', 'configparser',
             'standalone.py'
         ],
         check=True)

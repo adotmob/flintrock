@@ -50,21 +50,21 @@ setuptools.setup(
     # totally break Flintrock.
     # For example: https://github.com/paramiko/paramiko/issues/615
     install_requires=[
-        'boto3 == 1.4.4',
-        'botocore == 1.5.10',
+        'boto3 == 1.7.3',
+        'botocore == 1.10.3',
         'click == 6.7',
-        'paramiko == 2.1.1',
+        'paramiko == 2.4.1',
         'PyYAML == 3.12',
         # This is to ensure that PyInstaller works. dateutil is an
         # indirect dependency of Flintrock, and PyInstaller chokes on
         # dateutil 2.5.0.
         # See: https://github.com/pyinstaller/pyinstaller/issues/1848
-        'python-dateutil >= 2.5.3',
+        'python-dateutil == 2.6.1',
         # This is to address reports that PyInstaller-packaged versions
         # of Flintrock intermittently fail due to an out-of-date version
         # of Cryptography being used.
         # See: https://github.com/nchammas/flintrock/issues/169
-        'cryptography >= 1.7.2',
+        'cryptography == 2.2.2',
     ],
 
     entry_points={
