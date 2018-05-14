@@ -47,24 +47,11 @@ setuptools.setup(
     # totally break Flintrock.
     # For example: https://github.com/paramiko/paramiko/issues/615
     install_requires=[
-<<<<<<< HEAD
         'boto3 == 1.10.45',
         'botocore == 1.13.45',
         'click == 7.0',
         'paramiko == 2.7.1',
         'PyYAML == 5.2',
-=======
-        'boto3 == 1.4.4',
-        'botocore == 1.5.10',
-        'click == 6.7',
-        'paramiko == 2.1.1',
-        'PyYAML == 3.12',
-        # This is to ensure that PyInstaller works. dateutil is an
-        # indirect dependency of Flintrock, and PyInstaller chokes on
-        # dateutil 2.5.0.
-        # See: https://github.com/pyinstaller/pyinstaller/issues/1848
-        'python-dateutil == 2.6.1',
->>>>>>> [DMP-155]Fix: Pin dependencies to min versions instead of max
         # This is to address reports that PyInstaller-packaged versions
         # of Flintrock intermittently fail due to an out-of-date version
         # of Cryptography being used.
