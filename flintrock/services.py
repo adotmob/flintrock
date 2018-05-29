@@ -322,9 +322,7 @@ class Spark(FlintrockService):
                 """.format(
                     repo=shlex.quote(self.git_repository),
                     commit=shlex.quote(self.git_commit),
-                    # Hardcoding this here until we figure out a better way to handle
-                    # the supported build profiles.
-                    hadoop_short_version='2.7',
+                    hadoop_short_version='.'.join(self.hadoop_version.split('.')[:2]),
                 ))
         ssh_check_output(
             client=ssh_client,
