@@ -373,12 +373,25 @@ class Spark(FlintrockService):
             'spark/conf/slaves',
         ]
 
-        ssh_check_output(
-            client=ssh_client,
-            command="mkdir -p spark/conf",
-        )
+        # Export SPARK_DIST_CLASSPATH if user wants to use Spark's "Hadoop Free" Build.
+        # Cf https://spark.apache.org/docs/2.2.0/hadoop-provided.html
+        # This allows us to use Hadoop 2.8.
+        # NB: slf4jars are excluded, to avoid error "SLF4J: Class path contains multiple SLF4J bindings" (when
+        # multiple bindings are found, Spark logs are not written)
+        spark_dist_classpath = (
+            'export SPARK_DIST_CLASSPATH=$(hadoop classpath | '
+            'sed "s;/home/ec2-user/hadoop/share/hadoop/common/lib/slf4j[-\.a-z0-9]*\.jar:;;g")'
+        ) if 'without-hadoop' in self.download_source else ''
 
         for template_path in template_paths:
+            mapping = generate_template_mapping(
+                cluster=cluster,
+                spark_executor_instances=self.spark_executor_instances,
+                hadoop_version=self.hadoop_version,
+                spark_version=self.version or self.git_commit,
+            )
+            mapping['spark_dist_classpath'] = spark_dist_classpath
+
             ssh_check_output(
                 client=ssh_client,
                 command="""
@@ -387,12 +400,7 @@ class Spark(FlintrockService):
                     f=shlex.quote(
                         get_formatted_template(
                             path=os.path.join(THIS_DIR, "templates", template_path),
-                            mapping=generate_template_mapping(
-                                cluster=cluster,
-                                spark_executor_instances=self.spark_executor_instances,
-                                hadoop_version=self.hadoop_version,
-                                spark_version=self.version or self.git_commit,
-                            ))),
+                            mapping=mapping)),
                     p=shlex.quote(template_path)))
 
     # TODO: Convert this into start_master() and split master- or slave-specific
