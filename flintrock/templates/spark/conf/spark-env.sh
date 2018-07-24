@@ -25,3 +25,5 @@ export SPARK_PUBLIC_DNS
 # Need to find a way to do this, since "sudo ulimit..." doesn't fly.
 # Probably need to edit some Linux config file.
 # ulimit -n 1000000
+
+{spark_dist_classpath}
