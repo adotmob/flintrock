@@ -12,6 +12,11 @@ export SPARK_MASTER_HOST="{master_ip}"
 # Needed for spark 1.6.x
 export SPARK_MASTER_IP="{master_ip}"
 
+# Every hour, delete folders of finished applications in "spark/work" that are older than 4 hours.
+# This is important for Spark applications that are executed regularly, e.g. every 30 minutes,
+# because each folder in "spark/work" contains the application jar (around 40 MB)
+export SPARK_WORKER_OPTS="-Dspark.worker.cleanup.enabled=true -Dspark.worker.cleanup.interval=3600 -Dspark.worker.cleanup.appDataTtl=14400"
+
 # TODO: Make this dependent on HDFS install.
 export HADOOP_CONF_DIR="$HOME/hadoop/conf"
 
