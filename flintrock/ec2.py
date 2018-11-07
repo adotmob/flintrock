@@ -566,7 +566,7 @@ def get_or_create_flintrock_security_groups(
     flintrock_clients_cidr = []
     if not access_origins:
         flintrock_client_ip = (
-            urllib.request.urlopen('http://checkip.amazonaws.com/')
+            urllib.request.urlopen('https://checkip.amazonaws.com/')
             .read().decode('utf-8').strip())
         flintrock_clients_cidr.append('{ip}/32'.format(ip=flintrock_client_ip))
     else:
