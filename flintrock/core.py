@@ -480,7 +480,20 @@ def generate_template_mapping(
     except AttributeError:
         logger.exception('Property region is not defined in variable cluster')
 
-    # TODO: remove the following lines when the migration to IAM roles is finished
+    # NB: "instance profile credentials" are used by default: they are obtained thanks to parameter
+    # "instance-profile-name" in the Flintrock configuration file.
+    #
+    # If needed, a user can use his/her AWS credentials by adding the following lines to
+    # "templates/spark/conf/core-site.xml":
+    #    <property>
+    #      <name>fs.s3a.access.key</name>
+    #      <value>{access_key}</value>
+    #    </property>
+    #
+    #    <property>
+    #      <name>fs.s3a.secret.key</name>
+    #      <value>{secret_key}</value>
+    #    </property>
     try:
         import botocore
         credentials = botocore.session.get_session().get_credentials()
