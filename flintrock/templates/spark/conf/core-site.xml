@@ -58,4 +58,18 @@
       to avoid org.apache.http.conn.ConnectionPoolTimeoutException
     </description>
   </property>
+
+  <property>
+    <name>google.cloud.auth.service.account.enable</name>
+    <value>true</value>
+  </property>
+
+  <property>
+    <name>google.cloud.auth.service.account.json.keyfile</name>
+    <value>/home/ec2-user/google-service-account.json</value>
+    <description>
+      The JSON key file of the service account used for GCS
+      access when google.cloud.auth.service.account.enable is true.
+    </description>
+  </property>
 </configuration>
