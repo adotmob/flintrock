@@ -422,6 +422,7 @@ class Spark(FlintrockService):
         template_paths = [
             'spark/conf/spark-env.sh',
             'spark/conf/slaves',
+            'spark/conf/spark-defaults.conf'
         ]
 
         ssh_check_output(
