@@ -56,7 +56,7 @@ setuptools.setup(
         # of Flintrock intermittently fail due to an out-of-date version
         # of Cryptography being used.
         # See: https://github.com/nchammas/flintrock/issues/169
-        'cryptography == 1.7.2',
+        'cryptography == 2.6.1',
     ],
 
     entry_points={
