@@ -12,6 +12,21 @@
     <value>{hadoop_root_ephemeral_dirs}</value>
   </property>
 
+  <property>
+    <name>dfs.namenode.num.checkpoints.retained</name>
+    <value>1</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.num.extra.edits.retained</name>
+    <value>10000</value>
+  </property>
+
+  <property>
+    <name>dfs.namenode.max.extra.edits.segments.retained</name>
+    <value>2</value>
+  </property>
+
   <!-- With the following value, a datanote will be dead after ~2 minutes.
   This is useful when using flintrock remove-slaves
 
