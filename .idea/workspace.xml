@@ -4,6 +4,7 @@
     <list default="true" id="e4d7299a-dd33-411e-a244-32a60ee7fe5c" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/flintrock/ec2.py" beforeDir="false" afterPath="$PROJECT_DIR$/flintrock/ec2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/flintrock/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/flintrock/services.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

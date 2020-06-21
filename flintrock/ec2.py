@@ -5,7 +5,6 @@ import time
 import urllib.request
 import base64
 import logging
-from collections import namedtuple
 from datetime import datetime
 
 # External modules
@@ -25,7 +24,7 @@ from .exceptions import (
     NothingToDo,
 )
 from .ssh import generate_ssh_key_pair
-
+from .services import SecurityGroupRule
 
 logger = logging.getLogger('flintrock.ec2')
 
@@ -527,20 +526,13 @@ def get_or_create_flintrock_security_groups(
         cluster_name,
         vpc_id,
         region,
-        access_origins) -> "List[boto3.resource('ec2').SecurityGroup]":
+        access_origins,
+        services) -> "List[boto3.resource('ec2').SecurityGroup]":
     """
     If they do not already exist, create all the security groups needed for a
     Flintrock cluster.
     """
     ec2 = boto3.resource(service_name='ec2', region_name=region)
-
-    SecurityGroupRule = namedtuple(
-        'SecurityGroupRule', [
-            'ip_protocol',
-            'from_port',
-            'to_port',
-            'src_group',
-            'cidr_ip'])
 
     # TODO: Make these into methods, since we need this logic (though simple)
     #       in multiple places. (?)
@@ -594,43 +586,13 @@ def get_or_create_flintrock_security_groups(
                 from_port=22,
                 to_port=22,
                 cidr_ip=flintrock_client_cidr,
-                src_group=None),
-            # HDFS
-            SecurityGroupRule(
-                ip_protocol='tcp',
-                from_port=50070,
-                to_port=50070,
-                cidr_ip=flintrock_client_cidr,
-                src_group=None),
-            # Spark
-            SecurityGroupRule(
-                ip_protocol='tcp',
-                from_port=8080,
-                to_port=8081,
-                cidr_ip=flintrock_client_cidr,
-                src_group=None),
-            SecurityGroupRule(
-                ip_protocol='tcp',
-                from_port=4040,
-                to_port=4050,
-                cidr_ip=flintrock_client_cidr,
-                src_group=None),
-            SecurityGroupRule(
-                ip_protocol='tcp',
-                from_port=7077,
-                to_port=7077,
-                cidr_ip=flintrock_client_cidr,
-                src_group=None),
-            # Spark REST Server
-            SecurityGroupRule(
-                ip_protocol='tcp',
-                from_port=6066,
-                to_port=6066,
-                cidr_ip=flintrock_client_cidr,
                 src_group=None)
         ]
-
         client_rules.extend(rules)
+
+    for service in services:
+        for flintrock_client_cidr in flintrock_clients_cidr:
+            client_rules += service.get_security_group_rules(flintrock_client_cidr)
 
     # TODO: Don't try adding rules that already exist.
     # TODO: Add rules in one shot.
@@ -910,7 +872,8 @@ def launch(
         cluster_name=cluster_name,
         vpc_id=vpc_id,
         region=region,
-        access_origins=access_origins)
+        access_origins=access_origins,
+        services=services)
     user_security_groups = get_security_groups(
         vpc_id=vpc_id,
         region=region,
