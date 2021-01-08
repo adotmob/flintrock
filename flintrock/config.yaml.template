@@ -56,5 +56,6 @@ launch:
   num-slaves: 1
   # install-hdfs: True
   # install-spark: False
+  # java-version: 8
 
 debug: false

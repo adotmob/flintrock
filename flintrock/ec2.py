@@ -268,7 +268,9 @@ class EC2Cluster(FlintrockCluster):
             user: str,
             identity_file: str,
             num_slaves: int,
+            java_version: int,
             spot_price: float,
+            spot_request_valid_until: str,
             min_root_ebs_size_gb: int,
             tags: list,
             assume_yes: bool):
@@ -313,6 +315,7 @@ class EC2Cluster(FlintrockCluster):
                 num_instances=num_slaves,
                 region=self.region,
                 spot_price=spot_price,
+                spot_request_valid_until=spot_request_valid_until,
                 ami=self.master_instance.image_id,
                 assume_yes=assume_yes,
                 key_name=self.master_instance.key_name,
@@ -351,6 +354,7 @@ class EC2Cluster(FlintrockCluster):
             super().add_slaves(
                 user=user,
                 identity_file=identity_file,
+                java_version=java_version,
                 new_hosts=new_slaves)
         except (Exception, KeyboardInterrupt) as e:
             if isinstance(e, InterruptedEC2Operation):
@@ -820,6 +824,7 @@ def launch(
         *,
         cluster_name,
         num_slaves,
+        java_version,
         services,
         assume_yes,
         key_name,
@@ -973,6 +978,7 @@ def launch(
 
         provision_cluster(
             cluster=cluster,
+            java_version=java_version,
             services=services,
             user=user,
             identity_file=identity_file)
