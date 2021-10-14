@@ -290,6 +290,9 @@ class EC2Cluster(FlintrockCluster):
         ec2 = boto3.resource(service_name='ec2', region_name=self.region)
         client = ec2.meta.client
 
+        # Add custom ENV DATA tags
+        tags.append({'Key': 'ENV', 'Value': 'DATA'})
+
         response = client.describe_instance_attribute(
             InstanceId=self.master_instance.id,
             Attribute='instanceInitiatedShutdownBehavior'
@@ -886,6 +889,8 @@ def launch(
     master_instance = None
     slave_instances = []
     cluster = None
+
+    tags.append({'Key': 'ENV', 'Value': 'DATA'})
 
     master_tags = _tag_specs(cluster_name, 'master', tags)
     slave_tags = _tag_specs(cluster_name, 'slave', tags)
