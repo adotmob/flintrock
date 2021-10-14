@@ -331,6 +331,7 @@ class EC2Cluster(FlintrockCluster):
                 user_data=user_data)
 
             slave_tags = [
+                {'Key': 'ENV', 'Value': 'DATA'},
                 {'Key': 'flintrock-role', 'Value': 'slave'},
                 {'Key': 'Name', 'Value': '{c}-slave'.format(c=self.name)}]
             slave_tags += tags
@@ -948,6 +949,7 @@ def launch(
         slave_instances = cluster_instances[1:]
 
         master_tags = [
+            {'Key': 'ENV', 'Value': 'DATA'},
             {'Key': 'flintrock-role', 'Value': 'master'},
             {'Key': 'Name', 'Value': '{c}-master'.format(c=cluster_name)}]
         master_tags += tags
@@ -960,6 +962,7 @@ def launch(
             .create_tags(Tags=master_tags))
 
         slave_tags = [
+            {'Key': 'ENV', 'Value': 'DATA'},
             {'Key': 'flintrock-role', 'Value': 'slave'},
             {'Key': 'Name', 'Value': '{c}-slave'.format(c=cluster_name)}]
         slave_tags += tags
