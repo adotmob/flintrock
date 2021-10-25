@@ -662,6 +662,42 @@ def describe(
                     cluster.print()
 
 
+@cli.command()
+@click.option('--ec2-region', default='us-east-1', show_default=True)
+@click.option('--ec2-vpc-id', default='', help="Leave empty for default VPC.")
+@click.pass_context
+def list_clusters(
+        cli_context,
+        ec2_region,
+        ec2_vpc_id):
+    """
+    List all clusters
+
+    Leave out the cluster name to find all Flintrock-managed clusters.
+
+    The output of this command is both human- and machine-friendly. Full cluster
+    descriptions are output in YAML.
+    """
+    provider = cli_context.obj['provider']
+    search_area = ""
+
+    option_requires(
+        option='--provider',
+        conditional_value='ec2',
+        requires_all=['--ec2-region'],
+        scope=locals())
+
+    if provider == 'ec2':
+        search_area = "in region {r}".format(r=ec2_region)
+        clusters = ec2.get_clusters(
+            region=ec2_region,
+            vpc_id=ec2_vpc_id)
+    else:
+        raise UnsupportedProviderError(provider)
+
+    for cluster in sorted(clusters, key=lambda x: x.name):
+        logger.info("- {}".format(cluster.name))
+
 # TODO: Provide different command or option for going straight to Spark Shell. (?)
 @cli.command()
 @click.argument('cluster-name')
@@ -1152,6 +1188,7 @@ def config_to_click(config: dict) -> dict:
             + list(ec2_configs.items())
             + list(service_configs.items())),
         'describe': ec2_configs,
+        'list-clusters': ec2_configs,
         'destroy': ec2_configs,
         'login': ec2_configs,
         'start': ec2_configs,
