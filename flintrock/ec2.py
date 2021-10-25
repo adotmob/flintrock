@@ -84,7 +84,10 @@ class EC2Cluster(FlintrockCluster):
     @functools.lru_cache()
     def private_network(self):
         ec2 = boto3.resource(service_name='ec2', region_name=self.region)
-        return not ec2.Subnet(self.master_instance.subnet_id).map_public_ip_on_launch
+        try:
+            return not ec2.Subnet(self.master_instance.subnet_id).map_public_ip_on_launch
+        except AttributeError:
+            return not ec2.Subnet(self.slave_instances[0].subnet_id).map_public_ip_on_launch
 
     @property
     def master_ip(self):
@@ -96,13 +99,13 @@ class EC2Cluster(FlintrockCluster):
     @property
     def master_host(self):
         if self.private_network:
-            return self.master_instance.private_dns_name
+            return self.master_instance.private_ip_address
         else:
             return self.master_instance.public_dns_name
 
     @property
     def master_private_host(self):
-        return self.master_instance.private_dns_name
+        return self.master_instance.private_ip_address
 
     @property
     def slave_ips(self):
@@ -114,13 +117,13 @@ class EC2Cluster(FlintrockCluster):
     @property
     def slave_hosts(self):
         if self.private_network:
-            return [i.private_dns_name for i in self.slave_instances]
+            return [i.private_ip_address for i in self.slave_instances]
         else:
             return [i.public_dns_name for i in self.slave_instances]
 
     @property
     def slave_private_hosts(self):
-        return [i.private_dns_name for i in self.slave_instances]
+        return [i.private_ip_address for i in self.slave_instances]
 
     @property
     def num_masters(self):
