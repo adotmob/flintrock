@@ -481,6 +481,11 @@ def generate_template_mapping(
         'hadoop_root_ephemeral_dirs': hadoop_ephemeral_dirs if hadoop_ephemeral_dirs else hadoop_root_dir,
         'spark_root_ephemeral_dirs': spark_ephemeral_dirs if spark_ephemeral_dirs else spark_root_dir,
     }
+
+    try:
+        template_mapping['region'] = cluster.region
+    except AttributeError:
+        logger.exception('Property region is not defined in variable cluster')
     
     if spark_version:  # "spark_version" can be empty, e.g. in services.HDFS
         # Since Spark 2.4.0, the REST API is disabled by default. Cf https://issues.apache.org/jira/browse/SPARK-25088
