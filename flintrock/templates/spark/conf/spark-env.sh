@@ -21,6 +21,8 @@ export SPARK_PUBLIC_DNS="$(curl --silent http://169.254.169.254/latest/meta-data
 # Probably need to edit some Linux config file.
 # ulimit -n 1000000
 
+{spark_dist_classpath}
+
 # Should this be made part of a Python service somehow?
 export PYSPARK_PYTHON="python3"
 
