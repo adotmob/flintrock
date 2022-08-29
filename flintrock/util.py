@@ -71,4 +71,4 @@ def spark_hadoop_build_version(hadoop_version: str) -> str:
     elif (2, 7) <= hadoop_version < (3, 0):
         return 'hadoop2.7'
     elif (3, 0) <= hadoop_version:
-        return 'hadoop3.2'
+        return 'hadoop3'
