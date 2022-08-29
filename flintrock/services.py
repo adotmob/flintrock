@@ -420,11 +420,15 @@ class Spark(FlintrockService):
             cluster: FlintrockCluster):
 
         template_paths = [
-            'spark/conf/core-site.xml',
             'spark/conf/spark-env.sh',
             'spark/conf/slaves',
             'spark/conf/spark-defaults.conf'
         ]
+
+        if self.hadoop_version.startswith("2."):
+            template_paths.append('spark/conf/core-site.xml')
+        else:
+            template_paths.append('spark/conf/core-site-hadoop3.xml')
 
         # Export SPARK_DIST_CLASSPATH if user wants to use Spark's "Hadoop Free" Build.
         # Cf https://spark.apache.org/docs/2.2.0/hadoop-provided.html
@@ -451,6 +455,8 @@ class Spark(FlintrockService):
 
             mapping['spark_dist_classpath'] = spark_dist_classpath
 
+            p = shlex.quote(template_path.replace('-hadoop3', '')) if '-hadoop3' in template_path else shlex.quote(template_path)
+
             ssh_check_output(
                 client=ssh_client,
                 command="""
@@ -460,7 +466,7 @@ class Spark(FlintrockService):
                         get_formatted_template(
                             path=os.path.join(THIS_DIR, "templates", template_path),
                             mapping=mapping)),
-                    p=shlex.quote(template_path)))
+                    p=p))
 
     # TODO: Convert this into start_master() and split master- or slave-specific
     #       stuff out of configure() into configure_master() and configure_slave().
