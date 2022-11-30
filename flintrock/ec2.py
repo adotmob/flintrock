@@ -689,7 +689,7 @@ def get_ec2_block_device_mappings(
                 # of a root instance store volume.
                 'VolumeSize': min_root_ebs_size_gb,
                 # gp2 is general-purpose SSD
-                'VolumeType': 'gp2'})
+                'VolumeType': 'gp3'})
         del root_device['Ebs']['Encrypted']
         block_device_mappings.append(root_device)
 
