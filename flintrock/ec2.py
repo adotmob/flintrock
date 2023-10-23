@@ -55,6 +55,7 @@ def timeit(func):
         end = datetime.now().replace(microsecond=0)
         logger.info("{f} finished in {t}.".format(f=func.__name__, t=(end - start)))
         return res
+
     return wrapper
 
 
@@ -158,7 +159,9 @@ class EC2Cluster(FlintrockCluster):
             if logger.isEnabledFor(logging.DEBUG):
                 waiting_instances = [i for i in self.instances if i.state['Name'] != state]
                 sample = ', '.join(["'{}'".format(i.id) for i in waiting_instances][:3])
-                logger.debug("{size} instances not in state '{state}': {sample}, ...".format(size=len(waiting_instances), state=state, sample=sample))
+                logger.debug(
+                    "{size} instances not in state '{state}': {sample}, ...".format(size=len(waiting_instances),
+                                                                                    state=state, sample=sample))
             time.sleep(3)
             # Update metadata for all instances in one shot. We don't want
             # to make a call to AWS for each of potentially hundreds of
@@ -206,11 +209,11 @@ class EC2Cluster(FlintrockCluster):
         cluster_group.delete()
 
         (ec2.instances
-            .filter(
-                Filters=[
-                    {'Name': 'instance-id', 'Values': [i.id for i in self.instances]}
-                ])
-            .terminate())
+         .filter(
+            Filters=[
+                {'Name': 'instance-id', 'Values': [i.id for i in self.instances]}
+            ])
+         .terminate())
         self.wait_for_state('terminated')
 
     def start_check(self):
@@ -227,11 +230,11 @@ class EC2Cluster(FlintrockCluster):
         self.start_check()
         ec2 = boto3.resource(service_name='ec2', region_name=self.region)
         (ec2.instances
-            .filter(
-                Filters=[
-                    {'Name': 'instance-id', 'Values': [i.id for i in self.instances]}
-                ])
-            .start())
+         .filter(
+            Filters=[
+                {'Name': 'instance-id', 'Values': [i.id for i in self.instances]}
+            ])
+         .start())
         self.wait_for_state('running')
 
         super().start(
@@ -253,11 +256,11 @@ class EC2Cluster(FlintrockCluster):
 
         ec2 = boto3.resource(service_name='ec2', region_name=self.region)
         (ec2.instances
-            .filter(
-                Filters=[
-                    {'Name': 'instance-id', 'Values': [i.id for i in self.instances]}
-                ])
-            .stop())
+         .filter(
+            Filters=[
+                {'Name': 'instance-id', 'Values': [i.id for i in self.instances]}
+            ])
+         .stop())
         self.wait_for_state('stopped')
 
     def add_slaves_check(self):
@@ -289,9 +292,6 @@ class EC2Cluster(FlintrockCluster):
 
         ec2 = boto3.resource(service_name='ec2', region_name=self.region)
         client = ec2.meta.client
-
-        # Add custom ENV DATA tags
-        tags.append({'Key': 'ENV', 'Value': 'DATA'})
 
         response = client.describe_instance_attribute(
             InstanceId=self.master_instance.id,
@@ -397,11 +397,11 @@ class EC2Cluster(FlintrockCluster):
                 Groups=[flintrock_base_group.id])
 
         (ec2.instances
-            .filter(
-                Filters=[
-                    {'Name': 'instance-id', 'Values': [i.id for i in removed_slave_instances]}
-                ])
-            .terminate())
+         .filter(
+            Filters=[
+                {'Name': 'instance-id', 'Values': [i.id for i in removed_slave_instances]}
+            ])
+         .terminate())
 
     def run_command_check(self):
         if self.state != 'running':
@@ -520,9 +520,9 @@ def get_security_groups(
 
 
 def get_ssh_security_group_rules(
-    *,
-    flintrock_client_cidr=None,
-    flintrock_client_group=None,
+        *,
+        flintrock_client_cidr=None,
+        flintrock_client_group=None,
 ) -> "boto3.resource('ec2').SecurityGroup":
     return SecurityGroupRule(
         ip_protocol='tcp',
@@ -890,8 +890,6 @@ def launch(
     slave_instances = []
     cluster = None
 
-    tags.append({'Key': 'ENV', 'Value': 'DATA'})
-
     master_tags = _tag_specs(cluster_name, 'master', tags)
     slave_tags = _tag_specs(cluster_name, 'slave', tags)
 
@@ -957,7 +955,7 @@ def get_cluster(*, cluster_name: str, region: str, vpc_id: str) -> EC2Cluster:
     return cluster[0]
 
 
-def get_clusters(*, cluster_names: list=[], region: str, vpc_id: str) -> list:
+def get_clusters(*, cluster_names: list = [], region: str, vpc_id: str) -> list:
     """
     Get all the named clusters. If no names are given, get all clusters.
 
@@ -1087,7 +1085,7 @@ def _ec2_tags_to_dict(ec2_tags: list) -> dict:
 
 
 def _get_cluster_master_slaves(
-    instances: list
+        instances: list
 ) -> 'Tuple[boto3.resources.factory.ec2.Instance, List[boto3.resources.factory.ec2.Instance]]':
     """
     Get the master and slave instances from a set of raw EC2 instances representing
@@ -1135,15 +1133,15 @@ def _cleanup_instances(*, instances: list, assume_yes: bool, region: str):
         if not assume_yes:
             yes = click.confirm(
                 text="Do you want to terminate the {c} instances created by this operation?"
-                     .format(c=len(instances)),
+                .format(c=len(instances)),
                 err=True,
                 default=True)
 
         if assume_yes or yes:
             print("Terminating instances...", file=sys.stderr)
             (ec2.instances
-                .filter(
-                    Filters=[
-                        {'Name': 'instance-id', 'Values': [i.id for i in instances]}
-                    ])
-                .terminate())
+             .filter(
+                Filters=[
+                    {'Name': 'instance-id', 'Values': [i.id for i in instances]}
+                ])
+             .terminate())
