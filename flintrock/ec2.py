@@ -1,4 +1,5 @@
 import functools
+import os
 import string
 import sys
 import time
@@ -24,6 +25,8 @@ from .exceptions import (
     ClusterInvalidState,
     InterruptedEC2Operation,
     NothingToDo,
+    SlackUsernameNotFound,
+    TeamDataNotFound,
 )
 from .ssh import generate_ssh_key_pair
 from .services import SecurityGroupRule
@@ -315,6 +318,8 @@ class EC2Cluster(FlintrockCluster):
             instance_profile_arn = ''
         else:
             instance_profile_arn = self.master_instance.iam_instance_profile['Arn']
+
+        tags = ensure_required_tags_in_config(tags)
 
         self.add_slaves_check()
         try:
@@ -833,6 +838,8 @@ def launch(
                 r=region,
                 v=vpc_id))
 
+    tags = ensure_required_tags_in_config(tags)
+
     flintrock_security_groups = get_or_create_flintrock_security_groups(
         cluster_name=cluster_name,
         vpc_id=vpc_id,
@@ -1004,6 +1011,31 @@ def get_clusters(*, cluster_names: list = [], region: str, vpc_id: str) -> list:
         for cluster_name in found_cluster_names]
 
     return clusters
+
+
+def ensure_required_tags_in_config(tags: list) -> list:
+    environment = os.environ.get('ENV', 'development')
+    tag_dict = {tag['Key']: tag['Value'] for tag in tags}
+
+    if environment == 'development':
+        if tag_dict.get('TEAM') is None:
+            tags.append({'Key': 'TEAM', 'Value': 'DATA'})
+        elif tag_dict.get('TEAM') != 'DATA':
+            raise TeamDataNotFound('The value for TEAM is not DATA in the configuration file in '
+                                   'providers/ec2/tags for the development environment.')
+        else:
+            pass
+
+        if tag_dict.get('SLACK_USERNAME') is None:
+            slack_username = os.environ.get('SLACK_USERNAME', None)
+            if slack_username:
+                tags.append({'Key': 'SLACK_USERNAME', 'Value': slack_username})
+            else:
+                raise SlackUsernameNotFound('The SLACK_USERNAME key is missing from the configuration file in '
+                                            'providers/ec2/tags and also missing from your environment file '
+                                            'for the development environment.')
+
+    return tags
 
 
 def cli_validate_tags(ctx, param, value):
