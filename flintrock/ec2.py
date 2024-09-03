@@ -1014,15 +1014,16 @@ def get_clusters(*, cluster_names: list = [], region: str, vpc_id: str) -> list:
 
 
 def ensure_required_tags_in_config(tags: list) -> list:
-    environment = os.environ.get('ENV', 'development')
+    environment = os.environ.get('ENV', 'DEVELOPMENT')
     tag_dict = {tag['Key']: tag['Value'] for tag in tags}
 
-    if environment == 'development':
+    if environment == 'DEVELOPMENT':
+        tags.append({'Key': 'ENV', 'Value': 'DEVELOPMENT'})
         if tag_dict.get('TEAM') is None:
             tags.append({'Key': 'TEAM', 'Value': 'DATA'})
         elif tag_dict.get('TEAM') != 'DATA':
             raise TeamDataNotFound('The value for TEAM is not DATA in the configuration file in '
-                                   'providers/ec2/tags for the development environment.')
+                                   'providers/ec2/tags for the DEVELOPMENT environment.')
         else:
             pass
 
@@ -1033,7 +1034,7 @@ def ensure_required_tags_in_config(tags: list) -> list:
             else:
                 raise SlackUsernameNotFound('The SLACK_USERNAME key is missing from the configuration file in '
                                             'providers/ec2/tags and also missing from your environment file '
-                                            'for the development environment.')
+                                            'for the DEVELOPMENT environment.')
 
     return tags
 
